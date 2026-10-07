@@ -16,6 +16,15 @@ function getBase64Image(filename) {
   return `data:image/png;base64,${fileBuffer.toString("base64")}`;
 }
 
+function getBase64FromPath(filePath) {
+  if (!fs.existsSync(filePath)) {
+    console.warn(`Warning: Image file not found at path: ${filePath}`);
+    return "";
+  }
+  const fileBuffer = fs.readFileSync(filePath);
+  return `data:image/png;base64,${fileBuffer.toString("base64")}`;
+}
+
 async function generateAcademicPDF() {
   console.log("Loading genuine project screenshots for Word-styled PDF embedding...");
 
@@ -33,6 +42,9 @@ async function generateAcademicPDF() {
     adminDashboard: getBase64Image("fig_admin_dashboard.png"),
     adminUsers: getBase64Image("fig_admin_users.png"),
     adminAudit: getBase64Image("fig_admin_audit_logs.png"),
+    dbQueryCourses: getBase64FromPath(path.join(__dirname, "../ss/database_query_courses.png")),
+    dbQueryUsers: getBase64FromPath(path.join(__dirname, "../ss/database_query_users.png")),
+    dbQueryAssignments: getBase64FromPath(path.join(__dirname, "../ss/database_query_assignments.png")),
   };
 
   const studentHeaderHTML = `
@@ -531,20 +543,35 @@ async function generateAcademicPDF() {
 
   <!-- SECTION 10 -->
   <h1>10. PostgreSQL / Deployment Readiness</h1>
+  <p>
+    The Scholr platform has been migrated from local development SQLite to a production-grade <strong>Neon Serverless PostgreSQL</strong> relational database deployed on AWS (us-east-2). The application is hosted live on <strong>Vercel</strong> with automated Prisma client generation during builds.
+  </p>
   <table class="academic-table">
     <thead>
       <tr>
         <th>Infrastructure Component</th>
         <th>Current Runtime Implementation</th>
-        <th>Prepared Deployment Setup</th>
+        <th>Production Deployment Setup</th>
       </tr>
     </thead>
     <tbody>
-      <tr><td>Database Engine</td><td>Local SQLite (file:./dev.db)</td><td>PostgreSQL (Supabase / Neon Compatible)</td></tr>
-      <tr><td>Prisma Provider Schema</td><td>prisma/schema.prisma (sqlite)</td><td>prisma/schema.prisma.postgresql</td></tr>
-      <tr><td>Transactional Email Engine</td><td>React Email Render + Audit Log</td><td>Resend API Key & Production Webhook URL</td></tr>
+      <tr><td>Database Engine</td><td>Neon Serverless PostgreSQL (Cloud)</td><td>Live Connected (neondb - TLSv1.3 Encrypted)</td></tr>
+      <tr><td>Prisma Provider Schema</td><td>prisma/schema.prisma (postgresql)</td><td>Pooled Connection & Direct Migration URL</td></tr>
+      <tr><td>Hosting Platform</td><td>Vercel Serverless Hosting</td><td>Live at https://scholr-henna.vercel.app</td></tr>
+      <tr><td>Transactional Email Engine</td><td>Resend API + React Email Render</td><td>Production Webhook Audit Logging Active</td></tr>
     </tbody>
   </table>
+
+  <p><strong>Live Database SQL Query Verification & Execution Results:</strong></p>
+  <div class="inline-img-container">
+    <img src="${imgs.dbQueryCourses}" class="inline-img" alt="Neon DB Course & Student Query Results">
+  </div>
+  <div class="inline-img-container">
+    <img src="${imgs.dbQueryUsers}" class="inline-img" alt="Neon DB Users Table Query Results">
+  </div>
+  <div class="inline-img-container">
+    <img src="${imgs.dbQueryAssignments}" class="inline-img" alt="Neon DB Assignments & Course JOIN Query Results">
+  </div>
 
   <!-- SECTION 11 -->
   <h1>11. Testing & Verification Suite</h1>
@@ -574,12 +601,15 @@ async function generateAcademicPDF() {
 </html>
   `;
 
-  console.log("Launching Puppeteer for Word-styled PDF generation...");
-  const browser = await puppeteer.launch({
+  const chromePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+  const launchOptions = {
     headless: true,
-    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
+  };
+  if (fs.existsSync(chromePath)) {
+    launchOptions.executablePath = chromePath;
+  }
+  const browser = await puppeteer.launch(launchOptions);
 
   const page = await browser.newPage();
   await page.setContent(htmlContent, { waitUntil: "networkidle0" });
